@@ -1,0 +1,15 @@
+<h1>Gesture Estimation Test</h1>
+<ul>
+    <li *ngFor="let hand of hands$ | async">
+        <div>Score: {{ hand.score }}</div>
+        <table>
+            <tr><td>Point</td><td>Score</td><td>X</td><td>Y</td></tr>
+            <tr *ngFor="let keypoint of hand.keypoints">
+                <td>{{ keypoint.name }}</td>
+                <td>{{ keypoint.score|number:'1.2-2' }}</td>
+                <td>{{ keypoint.x|number:'1.0-0' }}</td>
+                <td>{{ keypoint.y|number:'1.0-0' }}</td>
+            </tr>
+        </table>
+    </li>
+</ul>
