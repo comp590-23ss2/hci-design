@@ -4,11 +4,11 @@ import * as tf from '@tensorflow/tfjs-core';
 import '@tensorflow/tfjs-backend-webgl';
 import * as poseDetection from '@tensorflow-models/hand-pose-detection'
 
-import { BehaviorSubject, Observable, Subject, combineLatestWith, from, map, mergeMap } from 'rxjs';
+import { BehaviorSubject, Observable, ReplaySubject, Subject, combineLatestWith, from, map, mergeMap, shareReplay } from 'rxjs';
 
 const FRAMES_PER_SECOND_GOAL = 30;
 
-const VIDEO_CONFIG = {
+const VIDEO_CONFIG: MediaStreamConstraints = {
   'audio': false,
   'video': {
     facingMode: 'user',
@@ -20,51 +20,36 @@ const VIDEO_CONFIG = {
   }
 };
 
-// const DETECTION_CONFIG: poseDetection.me = {
-//   // inputResolution: { width: 640, height: 480 },
-//   // architecture: 'MobileNetV1',
-//   // quantBytes: 4,
-//   // outputStride: 16
-// };
-
 @Injectable({
   providedIn: 'root'
 })
 export class PoseEstimationService {
 
-  public video?: HTMLVideoElement;
-  public detector?: poseDetection.HandDetector;
+  private video: Subject<HTMLVideoElement> = new ReplaySubject<HTMLVideoElement>();
+  public video$: Observable<HTMLVideoElement> = this.video.asObservable();
 
   private poses: Subject<poseDetection.Hand[]> = new BehaviorSubject<poseDetection.Hand[]>([]);
-  public poses$: Observable<poseDetection.Hand[]> = this.poses.asObservable();
+  public hands$: Observable<poseDetection.Hand[]> = this.poses.asObservable();
 
   constructor() {
+    this.initVideo();
     this.initDetector().pipe(
-      combineLatestWith(this.initVideo())
+      combineLatestWith(this.video$)
     ).subscribe(([detector, video]) => {
-      this.detector = detector;
-      this.video = video;
       document.body.appendChild(video);
-      video.addEventListener('play', () => this.runDetection());
+      video.addEventListener('play', () => this.runDetection(video, detector));
     });
   }
 
-  private initVideo(): Observable<HTMLVideoElement> {
-    return from(navigator.mediaDevices.getUserMedia(VIDEO_CONFIG))
-      .pipe(
-        map((stream) => {
+  private initVideo() {
+    from(navigator.mediaDevices.getUserMedia(VIDEO_CONFIG))
+      .subscribe((stream) => {
           let video = window.document.createElement('video') as HTMLVideoElement;
-          video.width = 640;
-          video.height = 480;
           video.autoplay = true;
           video.srcObject = stream;
-          video.style.position = "fixed";
-          video.style.top = "20px";
-          video.style.right = "0";
-          // video.style.visibility = 'hidden';
-          return video;
-        })
-      );
+          video.style.transform = "scaleX(-1)"
+          this.video.next(video);
+      });
   }
 
   initDetector(): Observable<poseDetection.HandDetector> {
@@ -73,15 +58,15 @@ export class PoseEstimationService {
     return createDetector;
   }
 
-  runDetection(): void {
+  runDetection(video: HTMLVideoElement, detector: poseDetection.HandDetector): void {
     window.setTimeout(() => {
-      let poses = this.detector!.estimateHands(this.video!, {
-        flipHorizontal: false
+      let poses = detector.estimateHands(video, {
+        flipHorizontal: true 
       });
       from(poses).subscribe(poses => {
-        let filteredPoses = poses.filter(pose => pose.score! > 0.65);
+        let filteredPoses = poses.filter(pose => pose.score! > 0.85);
         this.poses.next(filteredPoses);
-        this.runDetection();
+        this.runDetection(video, detector);
       });
     }, 1000 / FRAMES_PER_SECOND_GOAL);
   }

@@ -1,15 +1,22 @@
 <h1>Gesture Estimation Test</h1>
-<ul>
-    <li *ngFor="let hand of hands$ | async">
-        <div>Score: {{ hand.score }}</div>
-        <table>
-            <tr><td>Point</td><td>Score</td><td>X</td><td>Y</td></tr>
-            <tr *ngFor="let keypoint of hand.keypoints">
-                <td>{{ keypoint.name }}</td>
-                <td>{{ keypoint.score|number:'1.2-2' }}</td>
-                <td>{{ keypoint.x|number:'1.0-0' }}</td>
-                <td>{{ keypoint.y|number:'1.0-0' }}</td>
-            </tr>
-        </table>
-    </li>
-</ul>
+
+<div class="viewport">
+    <div #videoContainer></div>
+    <svg class="overlay" width="640px" height="480px">
+        <circle *ngFor="let pinch of pinches" r="10px" [attr.cx]="pinch.x" [attr.cy]="pinch.y" fill="white" opacity="0.5"></circle>
+        <g *ngFor="let drag of drags">
+            <line [attr.x1]="drag.start.x" [attr.y1]="drag.start.y" [attr.x2]="drag.end.x" [attr.y2]="drag.end.y" stroke="white" stroke-width="5px" opacity="0.75"></line>
+            <circle r="10px" [attr.cx]="drag.end.x" [attr.cy]="drag.end.y" fill="white" opacity="0.75"></circle>
+        </g>
+        <g *ngIf="handsPresent">
+            <g *ngFor="let hand of hands">
+                <!-- Wrist -->
+                <circle r="30px" [attr.cx]="hand.keypoints[0].x" [attr.cy]="hand.keypoints[0].y" fill="#FF0000" opacity="0.25"></circle>
+                <!-- Thumb Tip -->
+                <circle r="15px" [attr.cx]="hand.keypoints[4].x" [attr.cy]="hand.keypoints[4].y" fill="#0000FF" opacity="0.5"></circle>
+                <!-- Finger Tip -->
+                <circle r="15px" [attr.cx]="hand.keypoints[8].x" [attr.cy]="hand.keypoints[8].y" fill="#00FF00" opacity="0.5"></circle>
+            </g>
+        </g>
+    </svg>
+</div>
